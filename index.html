@@ -64,7 +64,7 @@
     margin-bottom: 8px;
     color: var(--primary-dark);
   }
-  select, input[type="file"] {
+  select {
     width: 100%;
     padding: 8px 10px;
     border-radius: 8px;
@@ -185,12 +185,6 @@
 <div class="container">
   <h1>📋 רשימת ליקוט ממחסן</h1>
 
-  <div class="section">
-    <label for="csvFileInput">טעינת רשימה מקובץ (CSV / Excel)</label>
-    <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls">
-    <p class="hint" style="margin-bottom:0;">פתוח לכולם. מבנה הקובץ: עמודה א׳ = שם פריט, עמודה ב׳ = כמות נדרשת, עמודה ג׳ (רשות) = סוג אריזה. הטעינה מחליפה זמנית את הרשימה המוצגת; הרענון הבא מהדרייב יחזיר את הרשימה המשותפת.</p>
-  </div>
-
   <details class="admin">
     <summary>⚙️ מקור הנתונים (למנהל)</summary>
     <div class="admin-body">
@@ -243,7 +237,7 @@ const EMPLOYEES = [
 
 // קישור "פרסום לאינטרנט" של הגיליון בפורמט CSV (Sheets > קובץ > שתף > פרסם לאינטרנט > CSV)
 // זהו קישור שונה מקישור השיתוף הרגיל - חובה להשתמש בקישור הפרסום, אחרת הטעינה תיחסם.
-const SHEET_CSV_URL = "PASTE_YOUR_PUBLISHED_GOOGLE_SHEET_CSV_LINK_HERE";
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBvFY68zIyKMCTC2L6bQnUMSQR1Kttogv1QaOOQoH0cV8mu_tQZ2VjcrQa-wXgg/pubhtml?gid=1057433053&single=true";
 
 // כל כמה זמן לרענן אוטומטית מהדרייב תוך כדי שימוש (במילישניות)
 const AUTO_REFRESH_MS = 3 * 60 * 1000;
@@ -259,7 +253,6 @@ const clearBtn = document.getElementById("clearBtn");
 const syncBtn = document.getElementById("syncBtn");
 const lastSyncEl = document.getElementById("lastSync");
 const statusEl = document.getElementById("status");
-const csvFileInput = document.getElementById("csvFileInput");
 
 const STORAGE_KEY = "liqut_items_v2";
 
@@ -386,36 +379,6 @@ async function syncFromDrive(isManual) {
     }
   }
 }
-
-csvFileInput.addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-
-  const reader = new FileReader();
-  reader.onload = (evt) => {
-    try {
-      const data = new Uint8Array(evt.target.result);
-      const workbook = XLSX.read(data, { type: "array" });
-      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
-      const parsed = parseRowsToItems(rows);
-
-      if (parsed.length === 0) {
-        setStatus("לא נמצאו פריטים בקובץ שהועלה.", "err");
-        return;
-      }
-
-      items = parsed;
-      renderItems();
-      csvFileInput.value = "";
-      setStatus(`נטענו ${items.length} פריטים מהקובץ (זמני, לשימוש הנוכחי בלבד).`, "ok");
-    } catch (err) {
-      console.error(err);
-      setStatus("שגיאה בקריאת הקובץ. ודאו שזהו קובץ CSV/Excel תקין.", "err");
-    }
-  };
-  reader.readAsArrayBuffer(file);
-});
 
 function populateEmployees() {
   employeeSelect.innerHTML = "";
