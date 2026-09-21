@@ -179,23 +179,109 @@
     text-align: center;
     margin-top: 8px;
   }
+  details.admin h4 {
+    margin: 18px 0 8px;
+    color: var(--primary-dark);
+    font-size: 0.95em;
+  }
+  #employeesAdminTable input {
+    width: 100%;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    font-size: 0.95em;
+  }
+  #employeesAdminTable td { padding: 4px 6px; }
+  .row-delete-btn {
+    background: #fff;
+    color: #c62828;
+    border: 1px solid #ef9a9a;
+    flex: none;
+    min-width: 0;
+    padding: 6px 10px;
+    font-size: 0.9em;
+  }
+  .row-delete-btn:hover { background: #ffebee; }
+  #addEmployeeBtn {
+    background: #fff;
+    color: var(--primary-dark);
+    border: 2px dashed var(--primary);
+    width: 100%;
+    margin-top: 8px;
+  }
+  #addEmployeeBtn:hover { background: var(--primary-light); }
+  .pin-row { display: flex; gap: 8px; }
+  .pin-row input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 1.1em;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .pin-row button {
+    flex: 0 0 auto;
+    min-width: 90px;
+    background: var(--primary);
+    color: #fff;
+  }
+  #pinError {
+    color: #c62828;
+    font-size: 0.85em;
+    margin-top: 8px;
+    min-height: 1.1em;
+  }
+  #adminStatus {
+    margin-top: 10px;
+    font-size: 0.88em;
+    font-weight: 600;
+    text-align: center;
+    min-height: 1.1em;
+  }
+  #adminStatus.ok { color: #2e7d32; }
+  #adminStatus.err { color: #c62828; }
 </style>
 </head>
 <body>
 <div class="container">
   <h1>📋 רשימת ליקוט ממחסן</h1>
 
-  <details class="admin">
-    <summary>⚙️ מקור הנתונים (למנהל)</summary>
+  <details class="admin" id="adminDetails">
+    <summary>⚙️ אזור מנהל</summary>
     <div class="admin-body">
-      <p class="hint">
-        הרשימה נטענת אוטומטית מגיליון Google Sheets, ומתעדכנת מעצמה כל כמה דקות תוך כדי שימוש.<br>
-        מבנה הגיליון: עמודה א׳ = שם פריט, עמודה ב׳ = כמות נדרשת, עמודה ג׳ (רשות) = סוג אריזה.<br>
-        <b>חשוב:</b> חייבים להשתמש בקישור "פרסום לאינטרנט" (לא קישור שיתוף רגיל): בגיליון ב-Google Sheets → קובץ → שתף → <b>פרסם לאינטרנט</b> → בחרו את הגיליון ופורמט <b>CSV</b> → פרסם → העתיקו את הקישור לתוך המשתנה <code>SHEET_CSV_URL</code> בקוד.<br>
-        <b>שימו לב:</b> טעינה אוטומטית מהדרייב עובדת רק כשהאפליקציה מאורחת בכתובת אינטרנט אמיתית (כמו GitHub Pages), ולא כשפותחים את הקובץ ישירות מהמחשב.
-      </p>
-      <button id="syncBtn">🔄 רענון עכשיו מהדרייב</button>
-      <div id="lastSync"></div>
+      <div id="adminLocked">
+        <p class="hint">יש להזין קוד מנהל כדי לנהל עובדים ולראות את הגדרות מקור הנתונים.</p>
+        <div class="pin-row">
+          <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="קוד סודי">
+          <button id="pinSubmitBtn" type="button">כניסה</button>
+        </div>
+        <div id="pinError"></div>
+      </div>
+
+      <div id="adminUnlocked" style="display:none;">
+        <h4>ניהול עובדים</h4>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr><th>שם העובד</th><th>אימייל</th><th></th></tr>
+            </thead>
+            <tbody id="employeesAdminTable"></tbody>
+          </table>
+        </div>
+        <button id="addEmployeeBtn" type="button">➕ הוספת עובד</button>
+        <div id="adminStatus"></div>
+
+        <h4>מקור הנתונים</h4>
+        <p class="hint">
+          הרשימה נטענת אוטומטית מגיליון Google Sheets, ומתעדכנת מעצמה כל כמה דקות תוך כדי שימוש.<br>
+          מבנה הגיליון: עמודה א׳ = שם פריט, עמודה ב׳ = כמות נדרשת, עמודה ג׳ (רשות) = סוג אריזה.<br>
+          <b>חשוב:</b> חייבים להשתמש בקישור "פרסום לאינטרנט" (לא קישור שיתוף רגיל): בגיליון ב-Google Sheets → קובץ → שתף → <b>פרסם לאינטרנט</b> → בחרו את הגיליון ופורמט <b>CSV</b> → פרסם → העתיקו את הקישור לתוך המשתנה <code>SHEET_CSV_URL</code> בקוד.<br>
+          <b>שימו לב:</b> טעינה אוטומטית מהדרייב עובדת רק כשהאפליקציה מאורחת בכתובת אינטרנט אמיתית (כמו GitHub Pages), ולא כשפותחים את הקובץ ישירות מהמחשב.
+        </p>
+        <button id="syncBtn">🔄 רענון עכשיו מהדרייב</button>
+        <div id="lastSync"></div>
+      </div>
     </div>
   </details>
 
@@ -228,12 +314,15 @@
 <script>
 /* ==================== הגדרות שיש לערוך ==================== */
 
-// רשימת העובדים והמיילים שלהם - יש לערוך בהתאם לעובדים בפועל
+// רשימת עובדים ברירת מחדל - ניתן להוסיף/למחוק עובדים גם דרך אזור המנהל באפליקציה (קוד 1234)
 const EMPLOYEES = [
   { name: "עדי לוריה", email: "adilourie@gmail.com" },
   { name: "דנה כהן", email: "dana@example.com" },
   { name: "יוסי לוי", email: "yossi@example.com" },
 ];
+
+// קוד המנהל הנדרש כדי לפתוח את אזור המנהל
+const ADMIN_PIN = "1234";
 
 // קישור "פרסום לאינטרנט" של הגיליון בפורמט CSV (Sheets > קובץ > שתף > פרסם לאינטרנט > CSV)
 // זהו קישור שונה מקישור השיתוף הרגיל - חובה להשתמש בקישור הפרסום, אחרת הטעינה תיחסם.
@@ -254,7 +343,18 @@ const syncBtn = document.getElementById("syncBtn");
 const lastSyncEl = document.getElementById("lastSync");
 const statusEl = document.getElementById("status");
 
+const adminDetails = document.getElementById("adminDetails");
+const adminLocked = document.getElementById("adminLocked");
+const adminUnlocked = document.getElementById("adminUnlocked");
+const pinInput = document.getElementById("pinInput");
+const pinSubmitBtn = document.getElementById("pinSubmitBtn");
+const pinError = document.getElementById("pinError");
+const employeesAdminTable = document.getElementById("employeesAdminTable");
+const addEmployeeBtn = document.getElementById("addEmployeeBtn");
+const adminStatusEl = document.getElementById("adminStatus");
+
 const STORAGE_KEY = "liqut_items_v2";
+const EMPLOYEES_STORAGE_KEY = "liqut_employees_v1";
 
 let items = []; // { name, requiredQty, unit, qty } - qty הוא null כשהשדה ריק (= 0)
 
@@ -390,15 +490,136 @@ async function syncFromDrive(isManual) {
   }
 }
 
+function saveEmployeesCache() {
+  try {
+    localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(employees));
+  } catch (e) {
+    console.error("שמירת עובדים נכשלה", e);
+  }
+}
+
+function loadEmployeesCache() {
+  try {
+    const raw = localStorage.getItem(EMPLOYEES_STORAGE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!Array.isArray(saved) || saved.length === 0) return null;
+    return saved.map((e) => ({ name: String(e.name ?? ""), email: String(e.email ?? "") }));
+  } catch (e) {
+    console.error("טעינת עובדים נכשלה", e);
+    return null;
+  }
+}
+
+let employees = loadEmployeesCache() || EMPLOYEES.map((e) => ({ ...e }));
+
 function populateEmployees() {
+  const previousValue = employeeSelect.value;
   employeeSelect.innerHTML = "";
-  EMPLOYEES.forEach((emp) => {
+  employees.forEach((emp) => {
     const opt = document.createElement("option");
     opt.value = emp.email;
     opt.textContent = emp.name;
     employeeSelect.appendChild(opt);
   });
+  if (previousValue && employees.some((e) => e.email === previousValue)) {
+    employeeSelect.value = previousValue;
+  }
 }
+
+function setAdminStatus(message, type) {
+  adminStatusEl.textContent = message;
+  adminStatusEl.className = type || "";
+}
+
+function renderEmployeesAdminTable() {
+  employeesAdminTable.innerHTML = "";
+  employees.forEach((emp, idx) => {
+    const tr = document.createElement("tr");
+
+    const nameTd = document.createElement("td");
+    const nameInput = document.createElement("input");
+    nameInput.type = "text";
+    nameInput.value = emp.name;
+    nameInput.addEventListener("input", () => {
+      employees[idx].name = nameInput.value;
+      saveEmployeesCache();
+      populateEmployees();
+    });
+    nameTd.appendChild(nameInput);
+    tr.appendChild(nameTd);
+
+    const emailTd = document.createElement("td");
+    const emailInput = document.createElement("input");
+    emailInput.type = "email";
+    emailInput.value = emp.email;
+    emailInput.addEventListener("input", () => {
+      employees[idx].email = emailInput.value;
+      saveEmployeesCache();
+      populateEmployees();
+    });
+    emailTd.appendChild(emailInput);
+    tr.appendChild(emailTd);
+
+    const delTd = document.createElement("td");
+    const delBtn = document.createElement("button");
+    delBtn.type = "button";
+    delBtn.className = "row-delete-btn";
+    delBtn.textContent = "🗑️";
+    delBtn.addEventListener("click", () => {
+      employees.splice(idx, 1);
+      saveEmployeesCache();
+      renderEmployeesAdminTable();
+      populateEmployees();
+      setAdminStatus("העובד הוסר.", "ok");
+    });
+    delTd.appendChild(delBtn);
+    tr.appendChild(delTd);
+
+    employeesAdminTable.appendChild(tr);
+  });
+}
+
+addEmployeeBtn.addEventListener("click", () => {
+  employees.push({ name: "", email: "" });
+  saveEmployeesCache();
+  renderEmployeesAdminTable();
+  populateEmployees();
+  const lastRow = employeesAdminTable.querySelector("tr:last-child input");
+  if (lastRow) lastRow.focus();
+});
+
+function unlockAdmin() {
+  adminLocked.style.display = "none";
+  adminUnlocked.style.display = "block";
+  pinInput.value = "";
+  pinError.textContent = "";
+  renderEmployeesAdminTable();
+}
+
+function checkPin() {
+  if (pinInput.value.trim() === ADMIN_PIN) {
+    unlockAdmin();
+  } else {
+    pinError.textContent = "קוד שגוי, נסו שוב.";
+  }
+}
+
+pinSubmitBtn.addEventListener("click", checkPin);
+pinInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") checkPin();
+});
+
+// נעילת אזור המנהל מחדש בכל פעם שהוא נסגר, כדי שיהיה צריך להזין קוד שוב בפעם הבאה
+adminDetails.addEventListener("toggle", () => {
+  if (!adminDetails.open) {
+    adminLocked.style.display = "block";
+    adminUnlocked.style.display = "none";
+    pinInput.value = "";
+    pinError.textContent = "";
+    setAdminStatus("", "");
+  }
+});
 
 function renderItems() {
   itemsBody.innerHTML = "";
