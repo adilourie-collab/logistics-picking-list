@@ -43,7 +43,7 @@
     .actions { flex-direction: column; }
     button { width: 100%; min-width: 0; padding: 14px 16px; font-size: 1.05em; }
     th, td { padding: 8px 6px; font-size: 0.92em; }
-    td input[type="number"] { width: 70px; min-height: 40px; font-size: 1em; }
+    td input[type="number"] { width: 60px; min-height: 40px; font-size: 1em; }
     select { min-height: 44px; }
   }
   h1 {
@@ -64,7 +64,7 @@
     margin-bottom: 8px;
     color: var(--primary-dark);
   }
-  input[type="file"], select {
+  select, input[type="file"] {
     width: 100%;
     padding: 8px 10px;
     border-radius: 8px;
@@ -92,12 +92,14 @@
   tbody tr:nth-child(even) { background: var(--primary-light); }
   tbody tr:hover { background: #b2ebf2; }
   td input[type="number"] {
-    width: 90px;
+    width: 80px;
     padding: 6px 8px;
     border-radius: 6px;
     border: 1px solid var(--border);
     text-align: center;
   }
+  .qty-cell { display: flex; align-items: center; gap: 6px; justify-content: flex-start; }
+  .unit-label { color: #607d8b; font-size: 0.88em; white-space: nowrap; }
   .empty-msg {
     color: #607d8b;
     text-align: center;
@@ -151,7 +153,7 @@
   details.admin .admin-body {
     padding-bottom: 14px;
   }
-  details.admin .hint {
+  .hint {
     font-size: 0.85em;
     color: #607d8b;
     margin: 6px 0 12px;
@@ -183,14 +185,20 @@
 <div class="container">
   <h1>📋 רשימת ליקוט ממחסן</h1>
 
+  <div class="section">
+    <label for="csvFileInput">טעינת רשימה מקובץ (CSV / Excel)</label>
+    <input type="file" id="csvFileInput" accept=".csv,.xlsx,.xls">
+    <p class="hint" style="margin-bottom:0;">פתוח לכולם. מבנה הקובץ: עמודה א׳ = שם פריט, עמודה ב׳ = כמות נדרשת, עמודה ג׳ (רשות) = סוג אריזה. הטעינה מחליפה זמנית את הרשימה המוצגת; הרענון הבא מהדרייב יחזיר את הרשימה המשותפת.</p>
+  </div>
+
   <details class="admin">
     <summary>⚙️ מקור הנתונים (למנהל)</summary>
     <div class="admin-body">
       <p class="hint">
         הרשימה נטענת אוטומטית מגיליון Google Sheets, ומתעדכנת מעצמה כל כמה דקות תוך כדי שימוש.<br>
-        מבנה הגיליון: עמודה ראשונה = שם הפריט, עמודה שנייה = הכמות הנדרשת.<br>
-        <b>חשוב:</b> חייבים להשתמש בקישור "פרסום לאינטרנט" (לא קישור שיתוף רגיל), אחרת גוגל חוסמת את הטעינה כשהקובץ נפתח מקומית:<br>
-        פתחו את הגיליון ב-Google Sheets → קובץ → שתף → <b>פרסם לאינטרנט</b> → תחת "קישור" בחרו בגיליון הרצוי ובפורמט <b>CSV</b> → פרסם → העתיקו את הקישור לתוך המשתנה <code>SHEET_CSV_URL</code> בקוד.
+        מבנה הגיליון: עמודה א׳ = שם פריט, עמודה ב׳ = כמות נדרשת, עמודה ג׳ (רשות) = סוג אריזה.<br>
+        <b>חשוב:</b> חייבים להשתמש בקישור "פרסום לאינטרנט" (לא קישור שיתוף רגיל): בגיליון ב-Google Sheets → קובץ → שתף → <b>פרסם לאינטרנט</b> → בחרו את הגיליון ופורמט <b>CSV</b> → פרסם → העתיקו את הקישור לתוך המשתנה <code>SHEET_CSV_URL</code> בקוד.<br>
+        <b>שימו לב:</b> טעינה אוטומטית מהדרייב עובדת רק כשהאפליקציה מאורחת בכתובת אינטרנט אמיתית (כמו GitHub Pages), ולא כשפותחים את הקובץ ישירות מהמחשב.
       </p>
       <button id="syncBtn">🔄 רענון עכשיו מהדרייב</button>
       <div id="lastSync"></div>
@@ -235,7 +243,7 @@ const EMPLOYEES = [
 
 // קישור "פרסום לאינטרנט" של הגיליון בפורמט CSV (Sheets > קובץ > שתף > פרסם לאינטרנט > CSV)
 // זהו קישור שונה מקישור השיתוף הרגיל - חובה להשתמש בקישור הפרסום, אחרת הטעינה תיחסם.
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBvFY68zIyKMCTC2L6bQnUMSQR1Kttogv1QaOOQoH0cV8mu_tQZ2VjcrQa-wXgg/pubhtml?gid=1057433053&single=true";
+const SHEET_CSV_URL = "PASTE_YOUR_PUBLISHED_GOOGLE_SHEET_CSV_LINK_HERE";
 
 // כל כמה זמן לרענן אוטומטית מהדרייב תוך כדי שימוש (במילישניות)
 const AUTO_REFRESH_MS = 3 * 60 * 1000;
@@ -251,14 +259,15 @@ const clearBtn = document.getElementById("clearBtn");
 const syncBtn = document.getElementById("syncBtn");
 const lastSyncEl = document.getElementById("lastSync");
 const statusEl = document.getElementById("status");
+const csvFileInput = document.getElementById("csvFileInput");
 
-const STORAGE_KEY = "liqut_items_v1";
+const STORAGE_KEY = "liqut_items_v2";
 
-let items = []; // { name, requiredQty, qty } - qty is null when the field is empty (= 0)
+let items = []; // { name, requiredQty, unit, qty } - qty הוא null כשהשדה ריק (= 0)
 
 function saveItemsCache() {
   try {
-    const base = items.map((i) => ({ name: i.name, requiredQty: i.requiredQty }));
+    const base = items.map((i) => ({ name: i.name, requiredQty: i.requiredQty, unit: i.unit }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
   } catch (e) {
     console.error("שמירה נכשלה", e);
@@ -274,6 +283,7 @@ function loadItemsCache() {
     return saved.map((entry) => ({
       name: entry.name,
       requiredQty: String(entry.requiredQty ?? ""),
+      unit: String(entry.unit ?? ""),
       qty: null,
     }));
   } catch (e) {
@@ -291,31 +301,27 @@ function parseRowsToItems(rows) {
     // מתעלמים משורת כותרת אפשרית (למשל "שם פריט" / "item")
     if (parsed.length === 0 && /^(שם|פריט|item|name)/i.test(name)) return;
     const requiredQty = String(row[1] ?? "").trim();
-    parsed.push({ name, requiredQty, qty: null });
+    const unit = String(row[2] ?? "").trim();
+    parsed.push({ name, requiredQty, unit, qty: null });
   });
   return parsed;
 }
 
 // הופך קישור "פרסום לאינטרנט" של Google Sheets (בכל צורה שהודבקה) לקישור CSV תקין.
-// זו נקודת הקצה היחידה של Google שמאפשרת fetch גם מדף שנפתח כקובץ מקומי (file://), ללא חסימת CORS.
 function resolveExportUrl(rawUrl) {
-  // קישור פרסום (pub / pubhtml), עם או בלי id ציבורי (d/e/...)
   const pubMatch = rawUrl.match(/\/spreadsheets\/d\/e\/([a-zA-Z0-9_-]+)\/pub/);
   if (pubMatch) {
     const gidMatch = rawUrl.match(/[?&]gid=([0-9]+)/);
     const gid = gidMatch ? gidMatch[1] : "0";
     return { url: `https://docs.google.com/spreadsheets/d/e/${pubMatch[1]}/pub?gid=${gid}&single=true&output=csv`, type: "text" };
   }
-  // כבר קישור CSV מוכן
   if (rawUrl.includes("output=csv")) {
     return { url: rawUrl, type: "text" };
   }
-  // קובץ ב-Drive (למשל אקסל שהועלה, לא גיליון גוגל)
   const driveMatch = rawUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || rawUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (driveMatch) {
     return { url: `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`, type: "binary" };
   }
-  // קישור עריכה/שיתוף רגיל של גיליון פרטי - לרוב ייחסם מקובץ מקומי, אבל ננסה בכל זאת
   const sheetsMatch = rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
   if (sheetsMatch) {
     return { url: `https://docs.google.com/spreadsheets/d/${sheetsMatch[1]}/gviz/tq?tqx=out:csv&gid=0`, type: "text" };
@@ -381,6 +387,36 @@ async function syncFromDrive(isManual) {
   }
 }
 
+csvFileInput.addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      const data = new Uint8Array(evt.target.result);
+      const workbook = XLSX.read(data, { type: "array" });
+      const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+      const parsed = parseRowsToItems(rows);
+
+      if (parsed.length === 0) {
+        setStatus("לא נמצאו פריטים בקובץ שהועלה.", "err");
+        return;
+      }
+
+      items = parsed;
+      renderItems();
+      csvFileInput.value = "";
+      setStatus(`נטענו ${items.length} פריטים מהקובץ (זמני, לשימוש הנוכחי בלבד).`, "ok");
+    } catch (err) {
+      console.error(err);
+      setStatus("שגיאה בקריאת הקובץ. ודאו שזהו קובץ CSV/Excel תקין.", "err");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+});
+
 function populateEmployees() {
   employeeSelect.innerHTML = "";
   EMPLOYEES.forEach((emp) => {
@@ -409,10 +445,13 @@ function renderItems() {
     tr.appendChild(nameTd);
 
     const requiredTd = document.createElement("td");
-    requiredTd.textContent = item.requiredQty;
+    requiredTd.textContent = item.unit ? `${item.requiredQty} ${item.unit}` : item.requiredQty;
     tr.appendChild(requiredTd);
 
     const qtyTd = document.createElement("td");
+    const qtyCell = document.createElement("div");
+    qtyCell.className = "qty-cell";
+
     const qtyInput = document.createElement("input");
     qtyInput.type = "number";
     qtyInput.min = "0";
@@ -428,7 +467,16 @@ function renderItems() {
       const val = parseFloat(raw);
       items[idx].qty = isNaN(val) || val < 0 ? null : val;
     });
-    qtyTd.appendChild(qtyInput);
+    qtyCell.appendChild(qtyInput);
+
+    if (item.unit) {
+      const unitSpan = document.createElement("span");
+      unitSpan.className = "unit-label";
+      unitSpan.textContent = item.unit;
+      qtyCell.appendChild(unitSpan);
+    }
+
+    qtyTd.appendChild(qtyCell);
     tr.appendChild(qtyTd);
 
     itemsBody.appendChild(tr);
@@ -465,7 +513,7 @@ sendBtn.addEventListener("click", () => {
   }
 
   const itemsListText = toSend
-    .map((i) => `${i.name} - ${i.qty}`)
+    .map((i) => `${i.name} - ${i.qty}${i.unit ? " " + i.unit : ""}`)
     .join("\n");
 
   const subject = `רשימת ליקוט - ${new Date().toLocaleDateString("he-IL")}`;
