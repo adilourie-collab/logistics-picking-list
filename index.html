@@ -69,7 +69,7 @@
     margin-bottom: 8px;
     color: var(--primary-dark);
   }
-  select {
+  select, #searchInput {
     width: 100%;
     padding: 8px 10px;
     border-radius: 8px;
@@ -77,6 +77,7 @@
     background: #fff;
     font-size: 1em;
   }
+  #searchInput:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
   table {
     width: 100%;
     border-collapse: collapse;
@@ -263,6 +264,11 @@
     </div>
   </details>
 
+  <div id="searchWrap" class="section" style="display:none;">
+    <label for="searchInput">חיפוש פריט</label>
+    <input type="text" id="searchInput" placeholder="הקלידו לחיפוש...">
+  </div>
+
   <div id="tableWrap" class="section" style="display:none;">
     <label>פריטים</label>
     <div class="table-scroll">
@@ -273,6 +279,7 @@
         <tbody id="itemsBody"></tbody>
       </table>
     </div>
+    <div id="noResultsMsg" class="empty-msg" style="display:none;">לא נמצאו פריטים תואמים לחיפוש.</div>
   </div>
   <div id="emptyMsg" class="empty-msg">טוען רשימת פריטים מהדרייב...</div>
 
@@ -314,6 +321,9 @@ const AUTO_REFRESH_MS = 3 * 60 * 1000;
 
 /* ============================================================ */
 
+const searchWrap = document.getElementById("searchWrap");
+const searchInput = document.getElementById("searchInput");
+const noResultsMsg = document.getElementById("noResultsMsg");
 const tableWrap = document.getElementById("tableWrap");
 const itemsBody = document.getElementById("itemsBody");
 const emptyMsg = document.getElementById("emptyMsg");
@@ -599,14 +609,23 @@ adminDetails.addEventListener("toggle", () => {
 function renderItems() {
   itemsBody.innerHTML = "";
   if (items.length === 0) {
+    searchWrap.style.display = "none";
     tableWrap.style.display = "none";
     emptyMsg.style.display = "block";
     return;
   }
+  searchWrap.style.display = "block";
   tableWrap.style.display = "block";
   emptyMsg.style.display = "none";
 
-  items.forEach((item, idx) => {
+  const term = searchInput.value.trim().toLowerCase();
+  const visibleEntries = items
+    .map((item, idx) => ({ item, idx }))
+    .filter(({ item }) => !term || item.name.toLowerCase().includes(term));
+
+  noResultsMsg.style.display = visibleEntries.length === 0 ? "block" : "none";
+
+  visibleEntries.forEach(({ item, idx }) => {
     const tr = document.createElement("tr");
 
     const nameTd = document.createElement("td");
@@ -651,6 +670,8 @@ function renderItems() {
     itemsBody.appendChild(tr);
   });
 }
+
+searchInput.addEventListener("input", renderItems);
 
 function setStatus(message, type) {
   statusEl.textContent = message;
