@@ -45,8 +45,6 @@
     table { table-layout: fixed; }
     th, td { padding: 6px 4px; font-size: 0.82em; word-break: break-word; }
     td input[type="number"] { width: 48px; min-height: 38px; font-size: 0.95em; padding: 4px; }
-    .qty-cell { flex-wrap: wrap; gap: 3px; }
-    .unit-label { font-size: 0.8em; }
     select { min-height: 44px; font-size: 0.95em; }
     .pin-row { flex-wrap: wrap; }
     .pin-row button { min-width: 70px; }
@@ -105,8 +103,6 @@
     border: 1px solid var(--border);
     text-align: center;
   }
-  .qty-cell { display: flex; align-items: center; gap: 6px; justify-content: flex-start; }
-  .unit-label { color: #607d8b; font-size: 0.88em; white-space: nowrap; }
   .empty-msg {
     color: #607d8b;
     text-align: center;
@@ -505,6 +501,14 @@ let employees = loadEmployeesCache() || EMPLOYEES.map((e) => ({ ...e }));
 function populateEmployees() {
   const previousValue = employeeSelect.value;
   employeeSelect.innerHTML = "";
+
+  const placeholderOpt = document.createElement("option");
+  placeholderOpt.value = "";
+  placeholderOpt.textContent = "בחירת מייל לקבלת הרשימה";
+  placeholderOpt.disabled = true;
+  placeholderOpt.selected = true;
+  employeeSelect.appendChild(placeholderOpt);
+
   employees.forEach((emp) => {
     const opt = document.createElement("option");
     opt.value = emp.email;
@@ -637,8 +641,6 @@ function renderItems() {
     tr.appendChild(requiredTd);
 
     const qtyTd = document.createElement("td");
-    const qtyCell = document.createElement("div");
-    qtyCell.className = "qty-cell";
 
     const qtyInput = document.createElement("input");
     qtyInput.type = "number";
@@ -655,16 +657,7 @@ function renderItems() {
       const val = parseFloat(raw);
       items[idx].qty = isNaN(val) || val < 0 ? null : val;
     });
-    qtyCell.appendChild(qtyInput);
-
-    if (item.unit) {
-      const unitSpan = document.createElement("span");
-      unitSpan.className = "unit-label";
-      unitSpan.textContent = item.unit;
-      qtyCell.appendChild(unitSpan);
-    }
-
-    qtyTd.appendChild(qtyCell);
+    qtyTd.appendChild(qtyInput);
     tr.appendChild(qtyTd);
 
     itemsBody.appendChild(tr);
