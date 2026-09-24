@@ -700,7 +700,7 @@ sendBtn.addEventListener("click", () => {
 
   const itemsListText = toSend
     .map((i) => `${i.name} - ${i.qty}${i.unit ? " " + i.unit : ""}`)
-    .join("\n");
+    .join("\r\n");
 
   const subject = `רשימת ליקוט - ${new Date().toLocaleDateString("he-IL")}`;
   const mailtoLink =
