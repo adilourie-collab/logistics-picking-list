@@ -218,10 +218,46 @@
   }
   #adminStatus.ok { color: #2e7d32; }
   #adminStatus.err { color: #c62828; }
+
+  #sendChecklistBtn { background: #fff; color: var(--primary-dark); border: 2px solid var(--primary); }
+  #sendChecklistBtn:hover { background: var(--primary-light); }
+
+  .checklist-meta { text-align: center; color: #607d8b; font-size: 0.9em; margin-bottom: 6px; }
+  .checklist-progress {
+    text-align: center;
+    font-weight: 700;
+    color: var(--primary-dark);
+    background: var(--primary-light);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 14px;
+  }
+  .checklist-progress.all-done { background: #e8f5e9; color: #2e7d32; }
+  .checklist { list-style: none; padding: 0; margin: 0; }
+  .checklist li { border-bottom: 1px solid var(--border); }
+  .checklist label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 6px;
+    cursor: pointer;
+    font-size: 1.05em;
+  }
+  .checklist input[type="checkbox"] {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    accent-color: var(--primary);
+  }
+  .checklist .item-text { flex: 1; word-break: break-word; }
+  .checklist .item-qty { font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
+  .checklist li.done { background: #f5fbfc; }
+  .checklist li.done .item-text,
+  .checklist li.done .item-qty { text-decoration: line-through; color: #90a4ae; }
 </style>
 </head>
 <body>
-<div class="container">
+<div class="container" id="appView">
   <h1>📋 רשימת ליקוט ממחסן</h1>
 
   <details class="admin" id="adminDetails">
@@ -286,10 +322,18 @@
 
   <div class="actions">
     <button id="clearBtn">🔄 איפוס כמויות</button>
-    <button id="sendBtn">📧 שלח מייל</button>
+    <button id="sendBtn">📧 שלח מייל רגיל</button>
+    <button id="sendChecklistBtn">☑️ שלח כצ'קליסט (קישור)</button>
   </div>
 
   <div id="status"></div>
+</div>
+
+<div class="container" id="checklistView" style="display:none;">
+  <h1>☑️ צ'קליסט ליקוט</h1>
+  <div id="checklistMeta" class="checklist-meta"></div>
+  <div id="checklistProgress" class="checklist-progress"></div>
+  <ul id="checklistList" class="checklist"></ul>
 </div>
 
 <script>
@@ -325,6 +369,7 @@ const itemsBody = document.getElementById("itemsBody");
 const emptyMsg = document.getElementById("emptyMsg");
 const employeeSelect = document.getElementById("employeeSelect");
 const sendBtn = document.getElementById("sendBtn");
+const sendChecklistBtn = document.getElementById("sendChecklistBtn");
 const clearBtn = document.getElementById("clearBtn");
 const syncBtn = document.getElementById("syncBtn");
 const lastSyncEl = document.getElementById("lastSync");
@@ -682,12 +727,12 @@ syncBtn.addEventListener("click", () => {
   syncEmployeesFromDrive(true);
 });
 
-sendBtn.addEventListener("click", () => {
+function prepareSend() {
   const toSend = items.filter((i) => Number(i.qty) > 0);
 
   if (toSend.length === 0) {
     setStatus("אין פריטים עם כמות גדולה מאפס לשליחה.", "err");
-    return;
+    return null;
   }
 
   const employeeEmail = employeeSelect.value;
@@ -695,37 +740,198 @@ sendBtn.addEventListener("click", () => {
 
   if (!employeeEmail) {
     setStatus("יש לבחור עובד.", "err");
-    return;
+    return null;
   }
 
-  const itemsListText = toSend
-    .map((i) => `${i.name} - ${i.qty}${i.unit ? " " + i.unit : ""}`)
-    .join("\r\n");
+  return { toSend, employeeEmail, employeeName };
+}
 
-  const subject = `רשימת ליקוט - ${new Date().toLocaleDateString("he-IL")}`;
+function openMailto(email, subject, body) {
   const mailtoLink =
-    `mailto:${employeeEmail}` +
+    `mailto:${email}` +
     `?subject=${encodeURIComponent(subject)}` +
-    `&body=${encodeURIComponent(itemsListText)}`;
+    `&body=${encodeURIComponent(body)}`;
 
   const link = document.createElement("a");
   link.href = mailtoLink;
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+sendBtn.addEventListener("click", () => {
+  const prepared = prepareSend();
+  if (!prepared) return;
+  const { toSend, employeeEmail, employeeName } = prepared;
+
+  const itemsListText = toSend
+    .map((i) => `${i.name} - ${i.qty}${i.unit ? " " + i.unit : ""}`)
+    .join("\r\n");
+
+  const subject = `רשימת ליקוט - ${new Date().toLocaleDateString("he-IL")}`;
+  openMailto(employeeEmail, subject, itemsListText);
 
   setStatus(`נפתחה תוכנת המייל עם הרשימה עבור ${employeeName}. יש לאשר שליחה בתוכנת המייל.`, "ok");
 });
 
-populateEmployees();
-const cachedItems = loadItemsCache();
-if (cachedItems) { items = cachedItems; renderItems(); }
-syncFromDrive(false);
-syncEmployeesFromDrive(false);
-setInterval(() => {
+/* ---------- צ'קליסט: קידוד הרשימה בתוך הקישור ---------- */
+
+function bytesToBase64Url(bytes) {
+  let bin = "";
+  bytes.forEach((b) => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToBytes(str) {
+  let b64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (b64.length % 4) b64 += "=";
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+async function pipeThrough(bytes, stream) {
+  const writer = stream.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  return new Uint8Array(await new Response(stream.readable).arrayBuffer());
+}
+
+// z = דחוס (deflate), j = לא דחוס (גיבוי לדפדפנים ישנים) - הדחיסה מקצרת את הקישור משמעותית
+async function encodeChecklist(data) {
+  const raw = new TextEncoder().encode(JSON.stringify(data));
+  if (typeof CompressionStream !== "undefined") {
+    try {
+      return "z" + bytesToBase64Url(await pipeThrough(raw, new CompressionStream("deflate-raw")));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return "j" + bytesToBase64Url(raw);
+}
+
+async function decodeChecklist(token) {
+  const bytes = base64UrlToBytes(token.slice(1));
+  const raw = token[0] === "z" ? await pipeThrough(bytes, new DecompressionStream("deflate-raw")) : bytes;
+  return JSON.parse(new TextDecoder().decode(raw));
+}
+
+sendChecklistBtn.addEventListener("click", async () => {
+  const prepared = prepareSend();
+  if (!prepared) return;
+  const { toSend, employeeEmail, employeeName } = prepared;
+
+  const dateStr = new Date().toLocaleDateString("he-IL");
+  const token = await encodeChecklist({
+    d: dateStr,
+    i: toSend.map((i) => [i.name, i.qty, i.unit]),
+  });
+  const link = `${location.href.split("#")[0]}#c=${token}`;
+
+  const body =
+    `רשימת ליקוט - ${dateStr}\r\n\r\n` +
+    `לפתיחת הצ'קליסט (לסימון פריטים שנאספו):\r\n${link}`;
+
+  openMailto(employeeEmail, `צ'קליסט ליקוט - ${dateStr}`, body);
+  setStatus(`נפתחה תוכנת המייל עם קישור לצ'קליסט עבור ${employeeName}. יש לאשר שליחה בתוכנת המייל.`, "ok");
+});
+
+/* ---------- צ'קליסט: תצוגת הנמען ---------- */
+
+function getChecklistToken(hash = location.hash) {
+  const m = hash.match(/^#c=([zj][A-Za-z0-9_-]+)$/);
+  return m ? m[1] : null;
+}
+
+function hashString(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+async function initChecklist(token) {
+  const appView = document.getElementById("appView");
+  const view = document.getElementById("checklistView");
+  const metaEl = document.getElementById("checklistMeta");
+  const progressEl = document.getElementById("checklistProgress");
+  const listEl = document.getElementById("checklistList");
+
+  appView.style.display = "none";
+  view.style.display = "block";
+
+  let data;
+  try {
+    data = await decodeChecklist(token);
+    if (!data || !Array.isArray(data.i)) throw new Error("bad data");
+  } catch (e) {
+    console.error(e);
+    progressEl.textContent = "הקישור לא תקין או שהוא נחתך בדרך. בקשו לשלוח אותו מחדש.";
+    return;
+  }
+
+  const storageKey = "liqut_checklist_" + hashString(token);
+  let checked = [];
+  try {
+    checked = JSON.parse(localStorage.getItem(storageKey)) || [];
+  } catch (e) { /* אין גישה לאחסון - ממשיכים בלי שמירה */ }
+
+  metaEl.textContent = data.d ? `תאריך: ${data.d}` : "";
+
+  function updateProgress() {
+    const done = data.i.filter((_, idx) => checked[idx]).length;
+    const allDone = done === data.i.length;
+    progressEl.textContent = allDone
+      ? `✅ הכול נאסף (${done}/${data.i.length})`
+      : `סומנו ${done} מתוך ${data.i.length}`;
+    progressEl.classList.toggle("all-done", allDone);
+  }
+
+  data.i.forEach(([name, qty, unit], idx) => {
+    const li = document.createElement("li");
+    li.classList.toggle("done", !!checked[idx]);
+
+    const label = document.createElement("label");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!checked[idx];
+    cb.addEventListener("change", () => {
+      checked[idx] = cb.checked;
+      li.classList.toggle("done", cb.checked);
+      try { localStorage.setItem(storageKey, JSON.stringify(checked)); } catch (e) { /* ignore */ }
+      updateProgress();
+    });
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "item-text";
+    nameSpan.textContent = name;
+
+    const qtySpan = document.createElement("span");
+    qtySpan.className = "item-qty";
+    qtySpan.textContent = `${qty}${unit ? " " + unit : ""}`;
+
+    label.append(cb, nameSpan, qtySpan);
+    li.appendChild(label);
+    listEl.appendChild(li);
+  });
+
+  updateProgress();
+}
+
+window.addEventListener("hashchange", () => location.reload());
+
+const checklistToken = getChecklistToken();
+if (checklistToken) {
+  initChecklist(checklistToken);
+} else {
+  populateEmployees();
+  const cachedItems = loadItemsCache();
+  if (cachedItems) { items = cachedItems; renderItems(); }
   syncFromDrive(false);
   syncEmployeesFromDrive(false);
-}, AUTO_REFRESH_MS);
+  setInterval(() => {
+    syncFromDrive(false);
+    syncEmployeesFromDrive(false);
+  }, AUTO_REFRESH_MS);
+}
 </script>
 </body>
 </html>
