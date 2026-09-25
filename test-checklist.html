@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>רשימת ליקוט ממחסן (ניסוי צ'קליסט)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --primary: #00acc1;
+    --primary-dark: #00838f;
+    --primary-light: #e0f7fa;
+    --bg: #f4fdff;
+    --text: #1a3c40;
+    --border: #b2ebf2;
+  }
+  * { box-sizing: border-box; }
+  html, body { max-width: 100%; overflow-x: hidden; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    margin: 0;
+    padding: 24px;
+    direction: rtl;
+  }
+  .container {
+    max-width: 720px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 172, 193, 0.15);
+    padding: 24px 28px 32px;
+  }
+  .table-scroll {
+    max-width: 100%;
+  }
+  @media (max-width: 600px) {
+    body { padding: 10px; }
+    .container { padding: 14px 10px 20px; border-radius: 12px; }
+    h1 { font-size: 1.25em; }
+    .actions { flex-direction: column; }
+    button { width: 100%; min-width: 0; padding: 14px 16px; font-size: 1.05em; }
+    table { table-layout: fixed; }
+    th, td { padding: 6px 4px; font-size: 0.82em; word-break: break-word; }
+    td input[type="number"] { width: 48px; min-height: 38px; font-size: 0.95em; padding: 4px; }
+    select { min-height: 44px; font-size: 0.95em; }
+    .pin-row { flex-wrap: wrap; }
+    .pin-row button { min-width: 70px; }
+  }
+  h1 {
+    color: var(--primary-dark);
+    text-align: center;
+    margin-top: 0;
+    font-size: 1.6em;
+  }
+  .section {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--primary-light);
+    border-radius: 10px;
+  }
+  .section label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+    color: var(--primary-dark);
+  }
+  select, #searchInput {
+    width: 100%;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #fff;
+    font-size: 1em;
+  }
+  #searchInput:focus { outline: 2px solid var(--primary); outline-offset: -1px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+    background: #fff;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  thead {
+    background: var(--primary);
+    color: #fff;
+  }
+  th, td {
+    padding: 8px 10px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    word-break: break-word;
+  }
+  tbody tr:nth-child(even) { background: var(--primary-light); }
+  tbody tr:hover { background: #b2ebf2; }
+  td input[type="number"] {
+    width: 80px;
+    padding: 6px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+  .empty-msg {
+    color: #607d8b;
+    text-align: center;
+    padding: 16px;
+  }
+  .actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+  }
+  button {
+    flex: 1;
+    min-width: 140px;
+    padding: 12px 16px;
+    border: none;
+    border-radius: 10px;
+    font-size: 1em;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease, transform 0.05s ease;
+  }
+  button:active { transform: scale(0.98); }
+  #sendBtn { background: var(--primary); color: #fff; }
+  #sendBtn:hover { background: var(--primary-dark); }
+  #clearBtn { background: #fff; color: var(--primary-dark); border: 2px solid var(--primary); }
+  #clearBtn:hover { background: var(--primary-light); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #status {
+    margin-top: 14px;
+    text-align: center;
+    font-weight: 600;
+    min-height: 1.2em;
+  }
+  #status.ok { color: #2e7d32; }
+  #status.err { color: #c62828; }
+
+  details.admin {
+    margin-bottom: 20px;
+    border: 1px dashed var(--primary);
+    border-radius: 10px;
+    padding: 4px 16px;
+    background: #fafffe;
+  }
+  details.admin summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--primary-dark);
+    padding: 10px 0;
+  }
+  details.admin .admin-body {
+    padding-bottom: 14px;
+  }
+  .hint {
+    font-size: 0.85em;
+    color: #607d8b;
+    margin: 6px 0 12px;
+  }
+  details.admin code {
+    background: var(--primary-light);
+    padding: 1px 5px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    word-break: break-all;
+  }
+  #syncBtn {
+    background: #fff;
+    color: var(--primary-dark);
+    border: 2px solid var(--primary);
+    width: 100%;
+    margin-top: 10px;
+  }
+  #syncBtn:hover { background: var(--primary-light); }
+  #lastSync {
+    font-size: 0.8em;
+    color: #607d8b;
+    text-align: center;
+    margin-top: 8px;
+  }
+  details.admin h4 {
+    margin: 18px 0 8px;
+    color: var(--primary-dark);
+    font-size: 0.95em;
+  }
+  .pin-row { display: flex; gap: 8px; }
+  .pin-row input {
+    flex: 1;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    font-size: 1.1em;
+    letter-spacing: 2px;
+    text-align: center;
+  }
+  .pin-row button {
+    flex: 0 0 auto;
+    min-width: 90px;
+    background: var(--primary);
+    color: #fff;
+  }
+  #pinError {
+    color: #c62828;
+    font-size: 0.85em;
+    margin-top: 8px;
+    min-height: 1.1em;
+  }
+  #adminStatus {
+    margin-top: 10px;
+    font-size: 0.88em;
+    font-weight: 600;
+    text-align: center;
+    min-height: 1.1em;
+  }
+  #adminStatus.ok { color: #2e7d32; }
+  #adminStatus.err { color: #c62828; }
+
+  #sendChecklistBtn { background: #fff; color: var(--primary-dark); border: 2px solid var(--primary); }
+  #sendChecklistBtn:hover { background: var(--primary-light); }
+
+  .checklist-meta { text-align: center; color: #607d8b; font-size: 0.9em; margin-bottom: 6px; }
+  .checklist-progress {
+    text-align: center;
+    font-weight: 700;
+    color: var(--primary-dark);
+    background: var(--primary-light);
+    border-radius: 10px;
+    padding: 10px;
+    margin-bottom: 14px;
+  }
+  .checklist-progress.all-done { background: #e8f5e9; color: #2e7d32; }
+  .checklist { list-style: none; padding: 0; margin: 0; }
+  .checklist li { border-bottom: 1px solid var(--border); }
+  .checklist label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 6px;
+    cursor: pointer;
+    font-size: 1.05em;
+  }
+  .checklist input[type="checkbox"] {
+    width: 26px;
+    height: 26px;
+    flex: none;
+    accent-color: var(--primary);
+  }
+  .checklist .item-text { flex: 1; word-break: break-word; }
+  .checklist .item-qty { font-weight: 700; color: var(--primary-dark); white-space: nowrap; }
+  .checklist li.done { background: #f5fbfc; }
+  .checklist li.done .item-text,
+  .checklist li.done .item-qty { text-decoration: line-through; color: #90a4ae; }
+</style>
+</head>
+<body>
+<div class="container" id="appView">
+  <h1>📋 רשימת ליקוט ממחסן</h1>
+
+  <details class="admin" id="adminDetails">
+    <summary>⚙️ אזור מנהל</summary>
+    <div class="admin-body">
+      <div id="adminLocked">
+        <p class="hint">יש להזין קוד מנהל כדי לנהל עובדים ולראות את הגדרות מקור הנתונים.</p>
+        <div class="pin-row">
+          <input type="password" id="pinInput" inputmode="numeric" maxlength="4" placeholder="קוד סודי">
+          <button id="pinSubmitBtn" type="button">כניסה</button>
+        </div>
+        <div id="pinError"></div>
+      </div>
+
+      <div id="adminUnlocked" style="display:none;">
+        <h4>מקור נתונים - פריטים</h4>
+        <p class="hint">
+          הרשימה נטענת אוטומטית מגיליון Google Sheets, ומתעדכנת מעצמה כל כמה דקות תוך כדי שימוש.<br>
+          מבנה הגיליון: עמודה א׳ = שם פריט, עמודה ב׳ = כמות נדרשת, עמודה ג׳ (רשות) = סוג אריזה.<br>
+          <b>חשוב:</b> חייבים להשתמש בקישור "פרסום לאינטרנט" (לא קישור שיתוף רגיל): בגיליון ב-Google Sheets → קובץ → שתף → <b>פרסם לאינטרנט</b> → בחרו את הגיליון ופורמט <b>CSV</b> → פרסם → העתיקו את הקישור לתוך המשתנה <code>SHEET_CSV_URL</code> בקוד.
+        </p>
+
+        <h4>מקור נתונים - עובדים ומיילים</h4>
+        <p class="hint">
+          רשימת העובדים לבחירה בתפריט נטענת אוטומטית מגיליון Google Sheets נפרד (או טאב נפרד באותו קובץ).<br>
+          מבנה הגיליון: עמודה א׳ = שם העובד, עמודה ב׳ = אימייל.<br>
+          יש לפרסם גם אותו לאינטרנט כ-CSV (באותו אופן) ולהעתיק את הקישור לתוך המשתנה <code>EMPLOYEES_CSV_URL</code> בקוד.
+        </p>
+
+        <p class="hint"><b>שימו לב:</b> טעינה אוטומטית מהדרייב עובדת רק כשהאפליקציה מאורחת בכתובת אינטרנט אמיתית (כמו GitHub Pages), ולא כשפותחים את הקובץ ישירות מהמחשב.</p>
+
+        <button id="syncBtn">🔄 רענון עכשיו מהדרייב (פריטים + עובדים)</button>
+        <div id="lastSync"></div>
+        <div id="adminStatus"></div>
+      </div>
+    </div>
+  </details>
+
+  <div id="searchWrap" class="section" style="display:none;">
+    <label for="searchInput">חיפוש פריט</label>
+    <input type="text" id="searchInput" placeholder="הקלידו לחיפוש...">
+  </div>
+
+  <div id="tableWrap" class="section" style="display:none;">
+    <label>פריטים</label>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>שם הפריט</th><th>כמות נדרשת</th><th>כמות ללקיטה</th></tr>
+        </thead>
+        <tbody id="itemsBody"></tbody>
+      </table>
+    </div>
+    <div id="noResultsMsg" class="empty-msg" style="display:none;">לא נמצאו פריטים תואמים לחיפוש.</div>
+  </div>
+  <div id="emptyMsg" class="empty-msg">טוען רשימת פריטים מהדרייב...</div>
+
+  <div class="section">
+    <label for="employeeSelect">בחירת עובד לשליחת הרשימה</label>
+    <select id="employeeSelect"></select>
+  </div>
+
+  <div class="actions">
+    <button id="clearBtn">🔄 איפוס כמויות</button>
+    <button id="sendBtn">📧 שלח מייל רגיל</button>
+    <button id="sendChecklistBtn">☑️ שלח כצ'קליסט (קישור)</button>
+  </div>
+
+  <div id="status"></div>
+</div>
+
+<div class="container" id="checklistView" style="display:none;">
+  <h1>☑️ צ'קליסט ליקוט</h1>
+  <div id="checklistMeta" class="checklist-meta"></div>
+  <div id="checklistProgress" class="checklist-progress"></div>
+  <ul id="checklistList" class="checklist"></ul>
+</div>
+
+<script>
+/* ==================== הגדרות שיש לערוך ==================== */
+
+// רשימת עובדים ברירת מחדל - משמשת רק כגיבוי לפני שהטעינה מהדרייב מסתיימת (או אם היא נכשלת)
+const EMPLOYEES = [
+  { name: "עדי לוריה", email: "adilourie@gmail.com" },
+  { name: "דנה כהן", email: "dana@example.com" },
+  { name: "יוסי לוי", email: "yossi@example.com" },
+];
+
+// קוד המנהל הנדרש כדי לפתוח את אזור המנהל
+const ADMIN_PIN = "1234";
+
+// קישור "פרסום לאינטרנט" של גיליון הפריטים בפורמט CSV (Sheets > קובץ > שתף > פרסם לאינטרנט > CSV)
+// זהו קישור שונה מקישור השיתוף הרגיל - חובה להשתמש בקישור הפרסום, אחרת הטעינה תיחסם.
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTWBvFY68zIyKMCTC2L6bQnUMSQR1Kttogv1QaOOQoH0cV8mu_tQZ2VjcrQa-wXgg/pubhtml?gid=1057433053&single=true";
+
+// קישור "פרסום לאינטרנט" של גיליון העובדים (שם, אימייל) בפורמט CSV - טאב/קובץ נפרד
+const EMPLOYEES_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vSqGUhlhHriqk-JjyOti6Y5tL5ZVDhSPqcvhDsvX3nY890c6XRY0iqNHBQAkUfOAg/pub?gid=1889085025&single=true&output=csv";
+
+// כל כמה זמן לרענן אוטומטית מהדרייב תוך כדי שימוש (במילישניות)
+const AUTO_REFRESH_MS = 3 * 60 * 1000;
+
+/* ============================================================ */
+
+const searchWrap = document.getElementById("searchWrap");
+const searchInput = document.getElementById("searchInput");
+const noResultsMsg = document.getElementById("noResultsMsg");
+const tableWrap = document.getElementById("tableWrap");
+const itemsBody = document.getElementById("itemsBody");
+const emptyMsg = document.getElementById("emptyMsg");
+const employeeSelect = document.getElementById("employeeSelect");
+const sendBtn = document.getElementById("sendBtn");
+const sendChecklistBtn = document.getElementById("sendChecklistBtn");
+const clearBtn = document.getElementById("clearBtn");
+const syncBtn = document.getElementById("syncBtn");
+const lastSyncEl = document.getElementById("lastSync");
+const statusEl = document.getElementById("status");
+
+const adminDetails = document.getElementById("adminDetails");
+const adminLocked = document.getElementById("adminLocked");
+const adminUnlocked = document.getElementById("adminUnlocked");
+const pinInput = document.getElementById("pinInput");
+const pinSubmitBtn = document.getElementById("pinSubmitBtn");
+const pinError = document.getElementById("pinError");
+const adminStatusEl = document.getElementById("adminStatus");
+
+const STORAGE_KEY = "liqut_items_v2";
+const EMPLOYEES_STORAGE_KEY = "liqut_employees_v2";
+
+let items = []; // { name, requiredQty, unit, qty } - qty הוא null כשהשדה ריק (= 0)
+
+function saveItemsCache() {
+  try {
+    const base = items.map((i) => ({ name: i.name, requiredQty: i.requiredQty, unit: i.unit }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
+  } catch (e) {
+    console.error("שמירה נכשלה", e);
+  }
+}
+
+function loadItemsCache() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!Array.isArray(saved) || saved.length === 0) return null;
+    return saved.map((entry) => ({
+      name: entry.name,
+      requiredQty: String(entry.requiredQty ?? ""),
+      unit: String(entry.unit ?? ""),
+      qty: null,
+    }));
+  } catch (e) {
+    console.error("טעינה נכשלה", e);
+    return null;
+  }
+}
+
+// מחלץ את סוג האריזה מתוך טקסט הכמות הנדרשת, כשהוא כתוב יחד עם המספר
+// (למשל "1 ארגז" -> "ארגז", "10 שרוולים" -> "שרוולים", "ארגז" (בלי מספר) -> "ארגז").
+function deriveUnit(requiredQtyRaw) {
+  const m = requiredQtyRaw.match(/^\s*[\d.,]+\s*(.*)$/);
+  if (m) return m[1].trim();
+  return requiredQtyRaw.trim();
+}
+
+function parseRowsToItems(rows) {
+  const parsed = [];
+  rows.forEach((row) => {
+    if (!row || row.length === 0) return;
+    const name = String(row[0] ?? "").trim();
+    if (!name) return;
+    // מתעלמים משורת כותרת אפשרית (למשל "שם פריט" / "item")
+    if (parsed.length === 0 && /^(שם|פריט|item|name)/i.test(name)) return;
+    const requiredQty = String(row[1] ?? "").trim();
+    // עמודה שלישית נפרדת (אם קיימת) גוברת; אחרת מחלצים את סוג האריזה מתוך עמודת הכמות עצמה
+    const explicitUnit = String(row[2] ?? "").trim();
+    const unit = explicitUnit || deriveUnit(requiredQty);
+    parsed.push({ name, requiredQty, unit, qty: null });
+  });
+  return parsed;
+}
+
+// הופך קישור "פרסום לאינטרנט" של Google Sheets (בכל צורה שהודבקה) לקישור CSV תקין.
+function resolveExportUrl(rawUrl) {
+  const pubMatch = rawUrl.match(/\/spreadsheets\/d\/e\/([a-zA-Z0-9_-]+)\/pub/);
+  if (pubMatch) {
+    const gidMatch = rawUrl.match(/[?&]gid=([0-9]+)/);
+    const gid = gidMatch ? gidMatch[1] : "0";
+    return { url: `https://docs.google.com/spreadsheets/d/e/${pubMatch[1]}/pub?gid=${gid}&single=true&output=csv`, type: "text" };
+  }
+  if (rawUrl.includes("output=csv")) {
+    return { url: rawUrl, type: "text" };
+  }
+  const driveMatch = rawUrl.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/) || rawUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (driveMatch) {
+    return { url: `https://drive.google.com/uc?export=download&id=${driveMatch[1]}`, type: "binary" };
+  }
+  const sheetsMatch = rawUrl.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (sheetsMatch) {
+    return { url: `https://docs.google.com/spreadsheets/d/${sheetsMatch[1]}/gviz/tq?tqx=out:csv&gid=0`, type: "text" };
+  }
+  return { url: rawUrl, type: "text" };
+}
+
+async function syncFromDrive(isManual) {
+  if (!SHEET_CSV_URL || SHEET_CSV_URL.startsWith("PASTE_")) {
+    if (isManual) setStatus("יש להגדיר קודם את קישור הגיליון (SHEET_CSV_URL) בקוד.", "err");
+    const cached = loadItemsCache();
+    if (cached) { items = cached; renderItems(); }
+    return;
+  }
+
+  if (isManual) setStatus("מרענן מהדרייב...", "");
+
+  try {
+    const { url: baseUrl, type: fetchType } = resolveExportUrl(SHEET_CSV_URL);
+    const url = baseUrl + (baseUrl.includes("?") ? "&" : "?") + "t=" + Date.now();
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error("HTTP " + response.status);
+
+    let workbook;
+    if (fetchType === "binary") {
+      const buffer = await response.arrayBuffer();
+      workbook = XLSX.read(new Uint8Array(buffer), { type: "array" });
+    } else {
+      const csvText = await response.text();
+      workbook = XLSX.read(csvText, { type: "string" });
+    }
+
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+    const parsed = parseRowsToItems(rows);
+
+    if (parsed.length === 0) {
+      setStatus("הגיליון בדרייב ריק או לא בפורמט הנכון.", "err");
+      return;
+    }
+
+    // שימור כמויות שכבר הוזנו עבור פריטים שעדיין קיימים בגיליון
+    const previousQty = new Map(items.map((i) => [i.name, i.qty]));
+    parsed.forEach((item) => {
+      if (previousQty.has(item.name)) item.qty = previousQty.get(item.name);
+    });
+
+    items = parsed;
+    saveItemsCache();
+    renderItems();
+
+    const now = new Date();
+    lastSyncEl.textContent = `עדכון אחרון מהדרייב: ${now.toLocaleTimeString("he-IL")}`;
+    if (isManual) setStatus(`הרשימה עודכנה מהדרייב (${items.length} פריטים).`, "ok");
+  } catch (err) {
+    console.error(err);
+    if (isManual) {
+      setStatus("שגיאה בטעינה מהדרייב. בדקו את הקישור וההרשאות של הגיליון.", "err");
+    } else if (items.length === 0) {
+      const cached = loadItemsCache();
+      if (cached) { items = cached; renderItems(); }
+    }
+  }
+}
+
+function saveEmployeesCache() {
+  try {
+    localStorage.setItem(EMPLOYEES_STORAGE_KEY, JSON.stringify(employees));
+  } catch (e) {
+    console.error("שמירת עובדים נכשלה", e);
+  }
+}
+
+function loadEmployeesCache() {
+  try {
+    const raw = localStorage.getItem(EMPLOYEES_STORAGE_KEY);
+    if (!raw) return null;
+    const saved = JSON.parse(raw);
+    if (!Array.isArray(saved) || saved.length === 0) return null;
+    return saved.map((e) => ({ name: String(e.name ?? ""), email: String(e.email ?? "") }));
+  } catch (e) {
+    console.error("טעינת עובדים נכשלה", e);
+    return null;
+  }
+}
+
+let employees = loadEmployeesCache() || EMPLOYEES.map((e) => ({ ...e }));
+
+function populateEmployees() {
+  const previousValue = employeeSelect.value;
+  employeeSelect.innerHTML = "";
+
+  const placeholderOpt = document.createElement("option");
+  placeholderOpt.value = "";
+  placeholderOpt.textContent = "בחירת מייל לקבלת הרשימה";
+  placeholderOpt.disabled = true;
+  placeholderOpt.selected = true;
+  employeeSelect.appendChild(placeholderOpt);
+
+  employees.forEach((emp) => {
+    const opt = document.createElement("option");
+    opt.value = emp.email;
+    opt.textContent = emp.name;
+    employeeSelect.appendChild(opt);
+  });
+  if (previousValue && employees.some((e) => e.email === previousValue)) {
+    employeeSelect.value = previousValue;
+  }
+}
+
+function setAdminStatus(message, type) {
+  adminStatusEl.textContent = message;
+  adminStatusEl.className = type || "";
+}
+
+function parseRowsToEmployees(rows) {
+  const parsed = [];
+  rows.forEach((row) => {
+    if (!row || row.length === 0) return;
+    const name = String(row[0] ?? "").trim();
+    const email = String(row[1] ?? "").trim();
+    if (!name || !email) return;
+    // מתעלמים משורת כותרת אפשרית (למשל "שם" / "name")
+    if (parsed.length === 0 && /^(שם|name|עובד|employee)/i.test(name)) return;
+    parsed.push({ name, email });
+  });
+  return parsed;
+}
+
+async function syncEmployeesFromDrive(isManual) {
+  if (!EMPLOYEES_CSV_URL || EMPLOYEES_CSV_URL.startsWith("PASTE_")) {
+    if (isManual) setAdminStatus("יש להגדיר קודם את קישור גיליון העובדים (EMPLOYEES_CSV_URL) בקוד.", "err");
+    return;
+  }
+
+  try {
+    const { url: baseUrl, type: fetchType } = resolveExportUrl(EMPLOYEES_CSV_URL);
+    const url = baseUrl + (baseUrl.includes("?") ? "&" : "?") + "t=" + Date.now();
+    const response = await fetch(url, { cache: "no-store" });
+    if (!response.ok) throw new Error("HTTP " + response.status);
+
+    let workbook;
+    if (fetchType === "binary") {
+      const buffer = await response.arrayBuffer();
+      workbook = XLSX.read(new Uint8Array(buffer), { type: "array" });
+    } else {
+      const csvText = await response.text();
+      workbook = XLSX.read(csvText, { type: "string" });
+    }
+
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+    const parsed = parseRowsToEmployees(rows);
+
+    if (parsed.length === 0) {
+      if (isManual) setAdminStatus("גיליון העובדים ריק או לא בפורמט הנכון.", "err");
+      return;
+    }
+
+    employees = parsed;
+    saveEmployeesCache();
+    populateEmployees();
+    if (isManual) setAdminStatus(`רשימת העובדים עודכנה מהדרייב (${employees.length} עובדים).`, "ok");
+  } catch (err) {
+    console.error(err);
+    if (isManual) setAdminStatus("שגיאה בטעינת רשימת העובדים מהדרייב.", "err");
+  }
+}
+
+function unlockAdmin() {
+  adminLocked.style.display = "none";
+  adminUnlocked.style.display = "block";
+  pinInput.value = "";
+  pinError.textContent = "";
+}
+
+function checkPin() {
+  if (pinInput.value.trim() === ADMIN_PIN) {
+    unlockAdmin();
+  } else {
+    pinError.textContent = "קוד שגוי, נסו שוב.";
+  }
+}
+
+pinSubmitBtn.addEventListener("click", checkPin);
+pinInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") checkPin();
+});
+
+// נעילת אזור המנהל מחדש בכל פעם שהוא נסגר, כדי שיהיה צריך להזין קוד שוב בפעם הבאה
+adminDetails.addEventListener("toggle", () => {
+  if (!adminDetails.open) {
+    adminLocked.style.display = "block";
+    adminUnlocked.style.display = "none";
+    pinInput.value = "";
+    pinError.textContent = "";
+    setAdminStatus("", "");
+  }
+});
+
+function renderItems() {
+  itemsBody.innerHTML = "";
+  if (items.length === 0) {
+    searchWrap.style.display = "none";
+    tableWrap.style.display = "none";
+    emptyMsg.style.display = "block";
+    return;
+  }
+  searchWrap.style.display = "block";
+  tableWrap.style.display = "block";
+  emptyMsg.style.display = "none";
+
+  const term = searchInput.value.trim().toLowerCase();
+  const visibleEntries = items
+    .map((item, idx) => ({ item, idx }))
+    .filter(({ item }) => !term || item.name.toLowerCase().includes(term));
+
+  noResultsMsg.style.display = visibleEntries.length === 0 ? "block" : "none";
+
+  visibleEntries.forEach(({ item, idx }) => {
+    const tr = document.createElement("tr");
+
+    const nameTd = document.createElement("td");
+    nameTd.textContent = item.name;
+    tr.appendChild(nameTd);
+
+    const requiredTd = document.createElement("td");
+    requiredTd.textContent = item.requiredQty;
+    tr.appendChild(requiredTd);
+
+    const qtyTd = document.createElement("td");
+
+    const qtyInput = document.createElement("input");
+    qtyInput.type = "number";
+    qtyInput.min = "0";
+    qtyInput.inputMode = "decimal";
+    qtyInput.placeholder = "0";
+    qtyInput.value = item.qty === null || item.qty === undefined ? "" : item.qty;
+    qtyInput.addEventListener("input", () => {
+      const raw = qtyInput.value.trim();
+      if (raw === "") {
+        items[idx].qty = null;
+        return;
+      }
+      const val = parseFloat(raw);
+      items[idx].qty = isNaN(val) || val < 0 ? null : val;
+    });
+    qtyTd.appendChild(qtyInput);
+    tr.appendChild(qtyTd);
+
+    itemsBody.appendChild(tr);
+  });
+}
+
+searchInput.addEventListener("input", renderItems);
+
+function setStatus(message, type) {
+  statusEl.textContent = message;
+  statusEl.className = type || "";
+}
+
+clearBtn.addEventListener("click", () => {
+  items.forEach((item) => { item.qty = null; });
+  renderItems();
+  setStatus("הכמויות אופסו. רשימת הפריטים נשארה כמו שהיא.", "ok");
+});
+
+syncBtn.addEventListener("click", () => {
+  syncFromDrive(true);
+  syncEmployeesFromDrive(true);
+});
+
+function prepareSend() {
+  const toSend = items.filter((i) => Number(i.qty) > 0);
+
+  if (toSend.length === 0) {
+    setStatus("אין פריטים עם כמות גדולה מאפס לשליחה.", "err");
+    return null;
+  }
+
+  const employeeEmail = employeeSelect.value;
+  const employeeName = employeeSelect.options[employeeSelect.selectedIndex]?.textContent || "";
+
+  if (!employeeEmail) {
+    setStatus("יש לבחור עובד.", "err");
+    return null;
+  }
+
+  return { toSend, employeeEmail, employeeName };
+}
+
+function openMailto(email, subject, body) {
+  const mailtoLink =
+    `mailto:${email}` +
+    `?subject=${encodeURIComponent(subject)}` +
+    `&body=${encodeURIComponent(body)}`;
+
+  const link = document.createElement("a");
+  link.href = mailtoLink;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+sendBtn.addEventListener("click", () => {
+  const prepared = prepareSend();
+  if (!prepared) return;
+  const { toSend, employeeEmail, employeeName } = prepared;
+
+  const itemsListText = toSend
+    .map((i) => `${i.name} - ${i.qty}${i.unit ? " " + i.unit : ""}`)
+    .join("\r\n");
+
+  const subject = `רשימת ליקוט - ${new Date().toLocaleDateString("he-IL")}`;
+  openMailto(employeeEmail, subject, itemsListText);
+
+  setStatus(`נפתחה תוכנת המייל עם הרשימה עבור ${employeeName}. יש לאשר שליחה בתוכנת המייל.`, "ok");
+});
+
+/* ---------- צ'קליסט: קידוד הרשימה בתוך הקישור ---------- */
+
+function bytesToBase64Url(bytes) {
+  let bin = "";
+  bytes.forEach((b) => { bin += String.fromCharCode(b); });
+  return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function base64UrlToBytes(str) {
+  let b64 = str.replace(/-/g, "+").replace(/_/g, "/");
+  while (b64.length % 4) b64 += "=";
+  return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+async function pipeThrough(bytes, stream) {
+  const writer = stream.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  return new Uint8Array(await new Response(stream.readable).arrayBuffer());
+}
+
+// z = דחוס (deflate), j = לא דחוס (גיבוי לדפדפנים ישנים) - הדחיסה מקצרת את הקישור משמעותית
+async function encodeChecklist(data) {
+  const raw = new TextEncoder().encode(JSON.stringify(data));
+  if (typeof CompressionStream !== "undefined") {
+    try {
+      return "z" + bytesToBase64Url(await pipeThrough(raw, new CompressionStream("deflate-raw")));
+    } catch (e) {
+      console.error(e);
+    }
+  }
+  return "j" + bytesToBase64Url(raw);
+}
+
+async function decodeChecklist(token) {
+  const bytes = base64UrlToBytes(token.slice(1));
+  const raw = token[0] === "z" ? await pipeThrough(bytes, new DecompressionStream("deflate-raw")) : bytes;
+  return JSON.parse(new TextDecoder().decode(raw));
+}
+
+sendChecklistBtn.addEventListener("click", async () => {
+  const prepared = prepareSend();
+  if (!prepared) return;
+  const { toSend, employeeEmail, employeeName } = prepared;
+
+  const dateStr = new Date().toLocaleDateString("he-IL");
+  const token = await encodeChecklist({
+    d: dateStr,
+    i: toSend.map((i) => [i.name, i.qty, i.unit]),
+  });
+  const link = `${location.href.split("#")[0]}#c=${token}`;
+
+  const body =
+    `רשימת ליקוט - ${dateStr}\r\n\r\n` +
+    `לפתיחת הצ'קליסט (לסימון פריטים שנאספו):\r\n${link}`;
+
+  openMailto(employeeEmail, `צ'קליסט ליקוט - ${dateStr}`, body);
+  setStatus(`נפתחה תוכנת המייל עם קישור לצ'קליסט עבור ${employeeName}. יש לאשר שליחה בתוכנת המייל.`, "ok");
+});
+
+/* ---------- צ'קליסט: תצוגת הנמען ---------- */
+
+function getChecklistToken(hash = location.hash) {
+  const m = hash.match(/^#c=([zj][A-Za-z0-9_-]+)$/);
+  return m ? m[1] : null;
+}
+
+function hashString(str) {
+  let h = 5381;
+  for (let i = 0; i < str.length; i++) h = ((h * 33) ^ str.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+async function initChecklist(token) {
+  const appView = document.getElementById("appView");
+  const view = document.getElementById("checklistView");
+  const metaEl = document.getElementById("checklistMeta");
+  const progressEl = document.getElementById("checklistProgress");
+  const listEl = document.getElementById("checklistList");
+
+  appView.style.display = "none";
+  view.style.display = "block";
+
+  let data;
+  try {
+    data = await decodeChecklist(token);
+    if (!data || !Array.isArray(data.i)) throw new Error("bad data");
+  } catch (e) {
+    console.error(e);
+    progressEl.textContent = "הקישור לא תקין או שהוא נחתך בדרך. בקשו לשלוח אותו מחדש.";
+    return;
+  }
+
+  const storageKey = "liqut_checklist_" + hashString(token);
+  let checked = [];
+  try {
+    checked = JSON.parse(localStorage.getItem(storageKey)) || [];
+  } catch (e) { /* אין גישה לאחסון - ממשיכים בלי שמירה */ }
+
+  metaEl.textContent = data.d ? `תאריך: ${data.d}` : "";
+
+  function updateProgress() {
+    const done = data.i.filter((_, idx) => checked[idx]).length;
+    const allDone = done === data.i.length;
+    progressEl.textContent = allDone
+      ? `✅ הכול נאסף (${done}/${data.i.length})`
+      : `סומנו ${done} מתוך ${data.i.length}`;
+    progressEl.classList.toggle("all-done", allDone);
+  }
+
+  data.i.forEach(([name, qty, unit], idx) => {
+    const li = document.createElement("li");
+    li.classList.toggle("done", !!checked[idx]);
+
+    const label = document.createElement("label");
+
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = !!checked[idx];
+    cb.addEventListener("change", () => {
+      checked[idx] = cb.checked;
+      li.classList.toggle("done", cb.checked);
+      try { localStorage.setItem(storageKey, JSON.stringify(checked)); } catch (e) { /* ignore */ }
+      updateProgress();
+    });
+
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "item-text";
+    nameSpan.textContent = name;
+
+    const qtySpan = document.createElement("span");
+    qtySpan.className = "item-qty";
+    qtySpan.textContent = `${qty}${unit ? " " + unit : ""}`;
+
+    label.append(cb, nameSpan, qtySpan);
+    li.appendChild(label);
+    listEl.appendChild(li);
+  });
+
+  updateProgress();
+}
+
+window.addEventListener("hashchange", () => location.reload());
+
+const checklistToken = getChecklistToken();
+if (checklistToken) {
+  initChecklist(checklistToken);
+} else {
+  populateEmployees();
+  const cachedItems = loadItemsCache();
+  if (cachedItems) { items = cachedItems; renderItems(); }
+  syncFromDrive(false);
+  syncEmployeesFromDrive(false);
+  setInterval(() => {
+    syncFromDrive(false);
+    syncEmployeesFromDrive(false);
+  }, AUTO_REFRESH_MS);
+}
+</script>
+</body>
+</html>
