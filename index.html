@@ -128,8 +128,8 @@
   button:active { transform: scale(0.98); }
   #sendBtn { background: var(--primary); color: #fff; }
   #sendBtn:hover { background: var(--primary-dark); }
-  #clearBtn { background: #fff; color: var(--primary-dark); border: 2px solid var(--primary); }
-  #clearBtn:hover { background: var(--primary-light); }
+  #clearBtn { background: #d32f2f; color: #fff; }
+  #clearBtn:hover { background: #b71c1c; }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
   #status {
     margin-top: 14px;
@@ -717,6 +717,7 @@ function setStatus(message, type) {
 }
 
 clearBtn.addEventListener("click", () => {
+  if (!confirm("לאפס את כל הכמויות שהוזנו? פעולה זו לא ניתנת לביטול.")) return;
   items.forEach((item) => { item.qty = null; });
   renderItems();
   setStatus("הכמויות אופסו. רשימת הפריטים נשארה כמו שהיא.", "ok");
