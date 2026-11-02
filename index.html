@@ -276,7 +276,7 @@
         <h4>מקור נתונים - פריטים</h4>
         <p class="hint">
           הרשימה נטענת אוטומטית מגיליון Google Sheets, ומתעדכנת מעצמה כל כמה דקות תוך כדי שימוש.<br>
-          מבנה הגיליון: עמודה א׳ = שם פריט, עמודה ב׳ = כמות נדרשת, עמודה ג׳ (רשות) = סוג אריזה.<br>
+          מבנה הגיליון: עמודה א׳ = שם פריט, עמודה ב׳ = מיקום, עמודה ג׳ = כמות נדרשת (כולל סוג אריזה, למשל "2 ארגזים").<br>
           <b>חשוב:</b> חייבים להשתמש בקישור "פרסום לאינטרנט" (לא קישור שיתוף רגיל): בגיליון ב-Google Sheets → קובץ → שתף → <b>פרסם לאינטרנט</b> → בחרו את הגיליון ופורמט <b>CSV</b> → פרסם → העתיקו את הקישור לתוך המשתנה <code>SHEET_CSV_URL</code> בקוד.
         </p>
 
@@ -306,7 +306,7 @@
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th>שם הפריט</th><th>כמות נדרשת</th><th>כמות ללקיטה</th></tr>
+          <tr><th>שם הפריט</th><th>מיקום</th><th>כמות נדרשת</th><th>כמות ללקיטה</th></tr>
         </thead>
         <tbody id="itemsBody"></tbody>
       </table>
@@ -390,7 +390,7 @@ let items = []; // { name, requiredQty, unit, qty } - qty הוא null כשהשד
 
 function saveItemsCache() {
   try {
-    const base = items.map((i) => ({ name: i.name, requiredQty: i.requiredQty, unit: i.unit }));
+    const base = items.map((i) => ({ name: i.name, location: i.location, requiredQty: i.requiredQty, unit: i.unit }));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(base));
   } catch (e) {
     console.error("שמירה נכשלה", e);
@@ -405,6 +405,7 @@ function loadItemsCache() {
     if (!Array.isArray(saved) || saved.length === 0) return null;
     return saved.map((entry) => ({
       name: entry.name,
+      location: String(entry.location ?? ""),
       requiredQty: String(entry.requiredQty ?? ""),
       unit: String(entry.unit ?? ""),
       qty: null,
@@ -431,11 +432,10 @@ function parseRowsToItems(rows) {
     if (!name) return;
     // מתעלמים משורת כותרת אפשרית (למשל "שם פריט" / "item")
     if (parsed.length === 0 && /^(שם|פריט|item|name)/i.test(name)) return;
-    const requiredQty = String(row[1] ?? "").trim();
-    // עמודה שלישית נפרדת (אם קיימת) גוברת; אחרת מחלצים את סוג האריזה מתוך עמודת הכמות עצמה
-    const explicitUnit = String(row[2] ?? "").trim();
-    const unit = explicitUnit || deriveUnit(requiredQty);
-    parsed.push({ name, requiredQty, unit, qty: null });
+    const location = String(row[1] ?? "").trim();
+    const requiredQty = String(row[2] ?? "").trim();
+    const unit = deriveUnit(requiredQty);
+    parsed.push({ name, location, requiredQty, unit, qty: null });
   });
   return parsed;
 }
@@ -680,6 +680,10 @@ function renderItems() {
     const nameTd = document.createElement("td");
     nameTd.textContent = item.name;
     tr.appendChild(nameTd);
+
+    const locationTd = document.createElement("td");
+    locationTd.textContent = item.location;
+    tr.appendChild(locationTd);
 
     const requiredTd = document.createElement("td");
     requiredTd.textContent = item.requiredQty;
