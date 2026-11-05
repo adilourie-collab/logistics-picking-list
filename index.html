@@ -36,19 +36,6 @@
   .table-scroll {
     max-width: 100%;
   }
-  @media (max-width: 600px) {
-    body { padding: 10px; }
-    .container { padding: 14px 10px 20px; border-radius: 12px; }
-    h1 { font-size: 1.25em; }
-    .actions { flex-direction: column; }
-    button { width: 100%; min-width: 0; padding: 14px 16px; font-size: 1.05em; }
-    table { table-layout: fixed; }
-    th, td { padding: 6px 4px; font-size: 0.82em; word-break: break-word; }
-    td input[type="number"] { width: 48px; min-height: 38px; font-size: 0.95em; padding: 4px; }
-    select { min-height: 44px; font-size: 0.95em; }
-    .pin-row { flex-wrap: wrap; }
-    .pin-row button { min-width: 70px; }
-  }
   h1 {
     color: var(--primary-dark);
     text-align: center;
@@ -254,6 +241,26 @@
   .checklist li.done { background: #f5fbfc; }
   .checklist li.done .item-text,
   .checklist li.done .item-qty { text-decoration: line-through; color: #90a4ae; }
+
+  /* מובייל - חייב להופיע אחרון כדי לגבור על הכללים הרגילים */
+  @media (max-width: 600px) {
+    body { padding: 8px; }
+    .container { padding: 14px 8px 20px; border-radius: 12px; }
+    .section { padding: 12px 8px; }
+    h1 { font-size: 1.25em; }
+    .actions { flex-direction: column; }
+    button { width: 100%; min-width: 0; padding: 14px 16px; font-size: 1.05em; }
+    table { table-layout: fixed; }
+    th, td { padding: 6px 3px; font-size: 0.85em; word-break: normal; overflow-wrap: break-word; }
+    th:nth-child(1) { width: 34%; }
+    th:nth-child(2) { width: 21%; }
+    th:nth-child(3) { width: 21%; }
+    th:nth-child(4) { width: 24%; }
+    td input[type="number"] { width: 100%; min-height: 38px; font-size: 1em; padding: 4px 2px; }
+    select { min-height: 44px; font-size: 0.95em; }
+    .pin-row { flex-wrap: wrap; }
+    .pin-row button { min-width: 70px; }
+  }
 </style>
 </head>
 <body>
